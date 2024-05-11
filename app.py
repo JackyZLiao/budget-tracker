@@ -262,7 +262,7 @@ with card_container():
         st.write(f'##### Other: :{colour}[\${o_spent}] out of ${o_target}')
         st.progress(o_spent / o_target if o_spent < o_target else 0 if o_target == 0 else 1.0)
     
-    colour = 'red' if cur_period > budget else 'green'
+    colour = 'red' if round(budget_spent.sum(), 2) > budget else 'green'
     st.write('')
     st.write(f'## Total Spending: :{colour}[\${round(budget_spent.sum(), 2)}] out of \${budget}')
 
