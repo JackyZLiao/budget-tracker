@@ -200,7 +200,7 @@ s_target = budget_set[budget_set['name'] == 'Shopping']['budget'].iloc[0] * budg
 o_target = budget_set[budget_set['name'] == 'Other']['budget'].iloc[0] * budget_multiplier
 
 r_t_spent = round(budget_spent['Restaurants & Takeaway'], 2) if 'Restaurants & Takeaway' in budget_spent.index else 0
-c_a_spent = round(budget_spent['CLothing & Accessories'], 2) if 'Clothing & Accessories' in budget_spent.index else 0
+c_a_spent = round(budget_spent['Clothing & Accessories'], 2) if 'Clothing & Accessories' in budget_spent.index else 0
 h_b_spent = round(budget_spent['Health & Beauty'], 2) if 'Health & Beauty' in budget_spent.index else 0
 s_m_spent = round(budget_spent['Subscriptions & Memberships'], 2) if 'Subscriptions & Memberships' in budget_spent.index else 0
 e_r_spent = round(budget_spent['Entertainment & Recreation'], 2) if 'Entertainment & Recreation' in budget_spent.index else 0
