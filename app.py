@@ -100,7 +100,7 @@ display = pd.DataFrame(to_display)
 
 cols = st.columns(3)
 with cols[0]:
-    ui.metric_card(title=f'Total {view} Spend', content=f'${cur_period}', description=f'{sign}${difference} from last {time_period}')
+    ui.metric_card(title=f'Total {view} Spend', content=f'${round(cur_period, 2)}', description=f'{sign}${difference} from last {time_period}')
 with cols[1]:
     ui.metric_card(title=f'Total {view} Budget', content=f'${budget}', description=f'${budget_difference} {over_under} budget')
 with cols[2]:
