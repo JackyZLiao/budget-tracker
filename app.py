@@ -87,19 +87,26 @@ budget = budget_set['budget'].sum() if view == 'Weekly' else budget_set['budget'
 sign = '-' if cur_period < prev_period else '+'
 budget_difference = abs(round(budget - cur_period, 2))
 over_under = "over" if budget < cur_period else "under"
-average = round(expenses_data['expenses'].mean(), 2)
-period = 'week' if view == 'Weekly' else 'month'
+time_period = 'week' if view == 'Weekly' else 'month'
+
+# processing the data to be show on bar graph
+expenses_data.set_index('period', inplace=True)
+to_display = {'Period': [], 'Spending': []}
+for period in display_periods:
+    spending = expenses_data.loc[period]['expenses'] if period in expenses_data.index else 0
+    to_display['Period'].append(period)
+    to_display['Spending'].append(spending)
+display = pd.DataFrame(to_display)
 
 cols = st.columns(3)
 with cols[0]:
-    ui.metric_card(title=f'Total {view} Spend', content=f'${cur_period}', description=f'{sign}${difference} from last {period}')
+    ui.metric_card(title=f'Total {view} Spend', content=f'${cur_period}', description=f'{sign}${difference} from last {time_period}')
 with cols[1]:
     ui.metric_card(title=f'Total {view} Budget', content=f'${budget}', description=f'${budget_difference} {over_under} budget')
 with cols[2]:
-    ui.metric_card(title=f'Average {view} Spend', content=f'${average}', description=f'Over the past {len(expenses_data)} {period}s ')
+    ui.metric_card(title=f'Average {view} Spend', content=f'${round(display["Spending"].mean(), 2)}', description=f'Over the past {len(display)} {time_period}s ')
 
 # **************************************** Chart **************************************** #
-# num_periods = st.slider(label='**Number of periods to show**')
 # Define the Vega-Lite specification
 vega_lite_spec = {
     "mark": { "type": "bar", "cornerRadiusEnd": 6 },
@@ -136,18 +143,11 @@ vega_lite_spec = {
     "height": 750,
 }
 
-expenses_data.set_index('period', inplace=True)
-to_display = {'Period': [], 'Spending': []}
-for period in display_periods:
-    spending = expenses_data.loc[period]['expenses'] if period in expenses_data.index else 0
-    to_display['Period'].append(period)
-    to_display['Spending'].append(spending)
-
-display = pd.DataFrame(to_display)
 with card_container():
     st.vega_lite_chart(display, vega_lite_spec, use_container_width=True)
 
 # **************************************** All Transactions **************************************** #
+
 # getting expenses data from SQL table
 query = f""" 
     SELECT *
@@ -159,7 +159,7 @@ df = pd.read_sql(query, conn)
 if view == 'Weekly':
     periods = list(set([datetime.strptime(date, '%Y-%m-%d').strftime('%W') for date in list(df['date'])]))
     periods = map(lambda x: f'Week {x}', periods)
-    periods = list(sorted(periods))
+    periods = list(reversed(sorted(periods)))
 else:
     periods = list(set([datetime.strptime(date, '%Y-%m-%d').strftime('%m/%y') for date in list(df['date'])]))
     periods = map(lambda x: datetime.strptime(x, '%m/%y').strftime('%B \'%y'), periods)
