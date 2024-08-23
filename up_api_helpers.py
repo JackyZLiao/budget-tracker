@@ -20,6 +20,41 @@ def get_transactions(url, since=None):
         print(response.status_code)
         return [];
 
+def make_dataframe(transactions):
+    cur = transactions
+    data = {
+        'description' : [],
+        'amount' : [],
+        'date' : [],
+        'category' : [] 
+    }
+
+    while True:
+        next_url = cur["links"]["next"]
+        for t in cur["data"]:
+            if not extract_data(t): continue
+            description, amount, category, date = extract_data(t)
+            data['description'].append(description)
+            data['amount'].append(amount)
+            data['date'].append(date)
+            data['category'].append(category)
+        if not next_url: break
+        cur = get_transactions(next_url)
+
+    df = pd.DataFrame(data)
+    return df
+
+def extract_data(transaction):
+    description = transaction["attributes"]["description"]
+    amount = float(transaction["attributes"]["amount"]["value"])
+    category = transaction["relationships"]["category"]["data"]["id"] if transaction["relationships"]["category"]["data"] else None
+    date = pd.to_datetime(transaction["attributes"]["createdAt"])
+
+    if amount >= 0 : return None # Ignore positive amounts i.e. money coming in 
+    if transaction["attributes"]["transactionType"] in ("Transfer", "Scheduled Transfer") : return None # Ignore transfers across accounts
+    return description, amount, category, date
+
+# For debugging purposes
 def print_transactions(transactions):
     for transaction in transactions["data"]:
         print(transaction["attributes"]["description"])
@@ -29,14 +64,7 @@ def print_transactions(transactions):
             print(transaction["relationships"]["category"]["data"]["id"])
         print();
         
-
-
 if __name__ == "__main__":
     transactions = get_transactions(UP_API_URL)
-
-    while True:
-        next_url = transactions["links"]["next"]
-        if not next_url: break
-        transactions = get_transactions(next_url)
-        print_transactions(transactions)
-    
+    df = make_dataframe(transactions)
+    print(df)

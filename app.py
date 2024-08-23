@@ -4,43 +4,39 @@ import sqlite3
 import pandas as pd
 from datetime import datetime, timedelta
 from local_components import card_container
+import up_api_helpers as up
 
 # Connecting to SQL database 
 conn = sqlite3.connect('expenses.db')
 cursor = conn.cursor()
-cursor.execute('''
-    CREATE TABLE IF NOT EXISTS expenses (
-        id INTEGER PRIMARY KEY,
-        name TEXT NOT NULL,
-        amount FLOAT NOT NULL,
-        category TEXT NOT NULL,
-        date DATE NOT NULL,
-        note TEXT
-    ); 
-''')
-cursor.execute('''
-    CREATE TABLE IF NOT EXISTS budget (
-        name TEXT PRIMARY KEY,
-        budget FLOAT NOT NULL
-    )
-''')
+cursor.execute("DROP TABLE IF EXISTS expenses")
+cursor.execute("DROP TABLE IF EXISTS budget")
+cursor.execute("CREATE TABLE IF NOT EXISTS expenses (id INTEGER PRIMARY KEY, name TEXT NOT NULL, amount FLOAT NOT NULL, category TEXT, date DATE NOT NULL)")
+               
+# cursor.execute('''
+#     CREATE TABLE IF NOT EXISTS budget (
+#         name TEXT PRIMARY KEY,
+#         budget FLOAT NOT NULL
+#     )
+# ''')
 
-entries = [
-    ('Restaurants & Takeaway', 0),
-    ('Entertainment & Recreation', 0),
-    ('Clothing & Accessories', 0),
-    ('Health & Beauty', 0),
-    ('Subscriptions & Memberships', 0),
-    ('Groceries', 0),
-    ('Transportation', 0),
-    ('Shopping', 0),
-    ('Life Admin', 0),
-    ('Other', 0),
-]
+# entries = [
+#     ('Restaurants & Takeaway', 0),
+#     ('Entertainment & Recreation', 0),
+#     ('Clothing & Accessories', 0),
+#     ('Health & Beauty', 0),
+#     ('Subscriptions & Memberships', 0),
+#     ('Groceries', 0),
+#     ('Transportation', 0),
+#     ('Shopping', 0),
+#     ('Life Admin', 0),
+#     ('Other', 0),
+# ]
 
-sql_query = "INSERT or IGNORE into budget (name, budget) VALUES (?, ?)"
-cursor.executemany(sql_query, entries)
+# sql_query = "INSERT or IGNORE into budget (name, budget) VALUES (?, ?)"
+# cursor.executemany(sql_query, entries)
 conn.commit()
+
 
 # **************************************** Intro Heading **************************************** #
 st.set_page_config(page_title='PennyPal', layout='wide')
