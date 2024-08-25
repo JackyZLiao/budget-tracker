@@ -18,8 +18,6 @@ df.to_sql('transactions', conn, if_exists='append', index=False); # Insert df in
 
 conn.commit()
 
-
-
 cursor.execute('''
     CREATE TABLE IF NOT EXISTS budget (
         name TEXT PRIMARY KEY,
@@ -43,6 +41,7 @@ entries = [
 sql_query = "INSERT or IGNORE into budget (name, budget) VALUES (?, ?)"
 cursor.executemany(sql_query, entries)
 
+conn.commit()
 
 # **************************************** Intro Heading **************************************** #
 st.set_page_config(page_title='PennyPal', layout='wide')
