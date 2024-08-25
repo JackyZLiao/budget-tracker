@@ -5,37 +5,43 @@ import pandas as pd
 from datetime import datetime, timedelta
 from local_components import card_container
 import up_api_helpers as up
+import helpers as h
 
-# Connecting to SQL database 
+# **************************************** SQL DB Setup **************************************** #
+
 conn = sqlite3.connect('expenses.db')
 cursor = conn.cursor()
-cursor.execute("DROP TABLE IF EXISTS expenses")
-cursor.execute("DROP TABLE IF EXISTS budget")
-cursor.execute("CREATE TABLE IF NOT EXISTS expenses (id INTEGER PRIMARY KEY, name TEXT NOT NULL, amount FLOAT NOT NULL, category TEXT, date DATE NOT NULL)")
-               
-# cursor.execute('''
-#     CREATE TABLE IF NOT EXISTS budget (
-#         name TEXT PRIMARY KEY,
-#         budget FLOAT NOT NULL
-#     )
-# ''')
+cursor.execute("CREATE TABLE IF NOT EXISTS transactions (id INTEGER PRIMARY KEY, description TEXT NOT NULL, amount FLOAT NOT NULL, category TEXT, date TEXT NOT NULL)")
+latest_transaction = h.get_last_transaction_date(conn)
+df = up.make_dataframe(up.get_transactions(up.UP_API_URL, latest_transaction)) # Getting all transactions into a df
+df.to_sql('transactions', conn, if_exists='append', index=False); # Insert df into SQL table
 
-# entries = [
-#     ('Restaurants & Takeaway', 0),
-#     ('Entertainment & Recreation', 0),
-#     ('Clothing & Accessories', 0),
-#     ('Health & Beauty', 0),
-#     ('Subscriptions & Memberships', 0),
-#     ('Groceries', 0),
-#     ('Transportation', 0),
-#     ('Shopping', 0),
-#     ('Life Admin', 0),
-#     ('Other', 0),
-# ]
-
-# sql_query = "INSERT or IGNORE into budget (name, budget) VALUES (?, ?)"
-# cursor.executemany(sql_query, entries)
 conn.commit()
+
+
+
+cursor.execute('''
+    CREATE TABLE IF NOT EXISTS budget (
+        name TEXT PRIMARY KEY,
+        budget FLOAT NOT NULL
+    )
+''')
+
+entries = [
+    ('Restaurants & Takeaway', 0),
+    ('Entertainment & Recreation', 0),
+    ('Clothing & Accessories', 0),
+    ('Health & Beauty', 0),
+    ('Subscriptions & Memberships', 0),
+    ('Groceries', 0),
+    ('Transportation', 0),
+    ('Shopping', 0),
+    ('Life Admin', 0),
+    ('Other', 0),
+]
+
+sql_query = "INSERT or IGNORE into budget (name, budget) VALUES (?, ?)"
+cursor.executemany(sql_query, entries)
 
 
 # **************************************** Intro Heading **************************************** #
@@ -51,29 +57,20 @@ view = ui.tabs(options=['Weekly', 'Monthly'], default_value='Weekly')
 st.write(f'## {view} Overview')
 num_periods = st.slider(label='**Number of periods to show**', min_value=5, max_value=52)
 if view == 'Weekly':
-    display_periods = [(datetime.now() - timedelta(days=datetime.now().weekday()) - timedelta(weeks=i)).strftime('W%W %Y') for i in range(num_periods)][::-1]
+    display_periods = [(datetime.now() - timedelta(days=datetime.now().weekday()) - timedelta(weeks=i)).strftime('%Y-W%W') for i in range(num_periods)][::-1]
 else:
-    display_periods = list(reversed([(datetime(datetime.now().year, datetime.now().month, 1) - timedelta(days=i*30)).strftime('%m/%Y') for i in range(num_periods)]))
+    display_periods = list(reversed([(datetime(datetime.now().year, datetime.now().month, 1) - timedelta(days=i*30)).strftime('%Y-M%m') for i in range(num_periods)]))
 
-format = "%m/%Y" if view == "Monthly" else "W%W %Y"
+format = "%Y-M%m" if view == "Monthly" else "%Y-W%W" 
 
 # getting budget data from SQL table
-budget_query = '''
-    SELECT *
-    FROM budget
-'''
+budget_query = "SELECT * FROM budget"
 budget_set = pd.read_sql(budget_query, conn)
     
 # getting expenses data from SQL table
-query = f""" 
-    SELECT 
-        strftime('{format}', date) AS period,
-        SUM(amount) AS expenses
-    FROM expenses
-    GROUP BY period
-    ORDER BY period
-"""
-expenses_data = pd.read_sql(query, conn)            
+query = f"SELECT strftime('{format}', date) AS period, SUM(amount) AS expenses FROM transactions GROUP BY period ORDER BY period"
+expenses_data = pd.read_sql(query, conn)  
+expenses_data = expenses_data.sort_values(by='period')
 
 # calculating all variables for the metric cards
 cur_period = expenses_data.iloc[-1]['expenses']
@@ -147,33 +144,32 @@ with card_container():
 # getting expenses data from SQL table
 query = f""" 
     SELECT *
-    FROM expenses
+    FROM transactions
     ORDER BY date DESC
 """
 df = pd.read_sql(query, conn)
 
 if view == 'Weekly':
-    periods = list(set([datetime.strptime(date, '%Y-%m-%d').strftime('%W') for date in list(df['date'])]))
-    periods = map(lambda x: f'Week {x}', periods)
+    periods = set([datetime.fromisoformat(date).strftime('%Y-W%W') for date in df['date']])
     periods = list(reversed(sorted(periods)))
 else:
-    periods = list(set([datetime.strptime(date, '%Y-%m-%d').strftime('%m/%y') for date in list(df['date'])]))
-    periods = map(lambda x: datetime.strptime(x, '%m/%y').strftime('%B \'%y'), periods)
-
+    periods = set([datetime.fromisoformat(date).strftime('%m/%y') for date in df['date']])
+    periods = [datetime.strptime(period, '%m/%y') for period in periods]
+    periods = reversed(sorted(periods))
+    periods = [date.strftime('%B %Y') for date in periods]
 
 cols = st.columns(2)
 with cols[0]:
     period = st.selectbox(label="**Select Time Period**", options=periods, index=0)
 with cols[1]:
-    sort_by = st.selectbox(label="**Sort By**", options=df.columns[1:-1], index=3)
+    sort_by = st.selectbox(label="**Sort By**", options=df.columns[1:], index=3)
 
 df = df.sort_values(by=f'{sort_by}')
-df['date_time'] = pd.to_datetime(df['date'])
+df['date_time'] = pd.to_datetime(df['date'], utc=True)
 df['date'] = df['date_time'].dt.strftime('%d %B %Y')
-df['week'] = df['date_time'].dt.strftime('%W')
-df['week'] = df['week'].astype(int)
-df['month'] = df['date_time'].dt.strftime('%B \'%y')
-df = df[df['week'] == int(period[-2:])] if view == 'Weekly' else df[df['month'] == period]
+df['week'] = df['date_time'].dt.strftime('%Y-W%W')
+df['month'] = df['date_time'].dt.strftime('%B %Y')
+df = df[df['week'] == period] if view == 'Weekly' else df[df['month'] == period]
 df.drop(columns=['date_time', 'week', 'month'], inplace=True)
 
 with card_container():
@@ -182,6 +178,7 @@ with card_container():
 # **************************************** Budget **************************************** #
 
 budget_spent = df.groupby('category')['amount'].sum()
+print(budget_spent)
 budget_multiplier = 1 if view == 'Weekly' else 4
 
 r_t_target = budget_set[budget_set['name'] == 'Restaurants & Takeaway']['budget'].iloc[0] * budget_multiplier
