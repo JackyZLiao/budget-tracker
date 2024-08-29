@@ -175,7 +175,68 @@ print(df)
 with card_container():
     ui.table(data=df)
 
-# **************************************** Budget **************************************** #
+# **************************************** Modify Expenses **************************************** #
+outer_cols = st.columns(2)
+
+with outer_cols[0]:
+    st.write(f'## Modify Expense')
+    modify_id = st.number_input('Modfiy ID', value=None)
+    if ui.button("Modify Expense", variant="destructive"):
+        delete_query = 'DELETE FROM expenses WHERE id = ?'
+        cursor.execute(delete_query, (id,))
+        if cursor.rowcount == 0:
+            st.error(f'Transaction with ID {int(id)} does not exist in the database', icon='⚠️')
+        else:
+            st.success(f'Transaction with ID {int(id)} deleted from databse', icon='✅')
+        conn.commit()
+
+    # st.write(f'## Modify Expense')
+    # cols = st.columns(2)
+    # with cols[0]:
+    #     name = st.text_input("Expense *", placeholder='Name of expense')
+    #     category = st.selectbox(
+    #         "Expense Category *",
+    #         ('Restaurants & Takeaway',
+    #         'Entertainment & Recreation',
+    #         'Clothing & Accessories',
+    #         'Health & Beauty',
+    #         'Subscriptions & Memberships',
+    #         'Groceries',
+    #         'Transportation',
+    #         'Shopping',
+    #         'Life Admin',
+    #         'Other')
+    #         , index=None
+    #         , placeholder='Select a category'
+    #     )
+    # with cols[1]:
+    #     amount = st.number_input("Amount *")
+    #     date = st.date_input("Date *")
+    # note = st.text_input("Notes", placeholder='Write any notes related to expense')
+
+    # st.write('')
+    # if ui.button("Add Expense", key="clk_btn"):
+    #     if name and amount and category and date:
+    #         cursor.execute("INSERT INTO expenses (name, amount, category, date, note) VALUES (?, ?, ?, ?, ?)", (name, amount, category, date, note))
+    #         conn.commit()
+    #         st.success('Expense successfully added', icon='✅')
+    #     else:
+    #         st.warning("Please fill out all required fields before submitting", icon='⚠️')
+with outer_cols[1]:
+    st.write(f'## Delete Expense')
+    delete_id = st.number_input('Delete ID', value=None)
+    if ui.button("Delete Expense", variant="destructive"):
+        delete_query = 'DELETE FROM expenses WHERE id = ?'
+        cursor.execute(delete_query, (id,))
+        if cursor.rowcount == 0:
+            st.error(f'Transaction with ID {int(id)} does not exist in the database', icon='⚠️')
+        else:
+            st.success(f'Transaction with ID {int(id)} deleted from databse', icon='✅')
+        conn.commit()
+
+
+
+# **************************************** Budget Chart **************************************** #
 
 categories = df.groupby('category')['amount'].sum()
 categories = categories.reset_index()
@@ -321,52 +382,3 @@ with card_container():
 #     </style>""",
 #     unsafe_allow_html=True,
 # )
-
-# **************************************** Add Expenses **************************************** #
-outer_cols = st.columns(2)
-
-with outer_cols[0]:
-    st.write(f'## Add Expense')
-    cols = st.columns(2)
-    with cols[0]:
-        name = st.text_input("Expense *", placeholder='Name of expense')
-        category = st.selectbox(
-            "Expense Category *",
-            ('Restaurants & Takeaway',
-            'Entertainment & Recreation',
-            'Clothing & Accessories',
-            'Health & Beauty',
-            'Subscriptions & Memberships',
-            'Groceries',
-            'Transportation',
-            'Shopping',
-            'Life Admin',
-            'Other')
-            , index=None
-            , placeholder='Select a category'
-        )
-    with cols[1]:
-        amount = st.number_input("Amount *")
-        date = st.date_input("Date *")
-    note = st.text_input("Notes", placeholder='Write any notes related to expense')
-
-    st.write('')
-    if ui.button("Add Expense", key="clk_btn"):
-        if name and amount and category and date:
-            cursor.execute("INSERT INTO expenses (name, amount, category, date, note) VALUES (?, ?, ?, ?, ?)", (name, amount, category, date, note))
-            conn.commit()
-            st.success('Expense successfully added', icon='✅')
-        else:
-            st.warning("Please fill out all required fields before submitting", icon='⚠️')
-with outer_cols[1]:
-    st.write(f'## Delete Expense')
-    id = st.number_input('Transaction ID', value=None)
-    if ui.button("Delete Expense", variant="destructive", key="destructive"):
-        delete_query = 'DELETE FROM expenses WHERE id = ?'
-        cursor.execute(delete_query, (id,))
-        if cursor.rowcount == 0:
-            st.error(f'Transaction with ID {int(id)} does not exist in the database', icon='⚠️')
-        else:
-            st.success(f'Transaction with ID {int(id)} deleted from databse', icon='✅')
-        conn.commit()
-
