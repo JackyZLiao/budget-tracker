@@ -11,3 +11,8 @@ def get_last_transaction_date(conn):
         return updated_date.isoformat()
     else:
         return None
+    
+def update_entry(row, cursor):
+    query = "UPDATE transactions SET description = ?, amount = ?, category = ? WHERE id = ?"
+    cursor.execute(query, (row['description'], row['amount'], row['category'], row['id']))
+

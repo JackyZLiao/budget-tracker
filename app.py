@@ -12,6 +12,9 @@ import plotly.express as px
 
 conn = sqlite3.connect('expenses.db')
 cursor = conn.cursor()
+# cursor.execute("DROP TABLE IF EXISTS transactions")
+# cursor.execute("DROP TABLE IF EXISTS budget")
+
 cursor.execute("CREATE TABLE IF NOT EXISTS transactions (id INTEGER PRIMARY KEY, description TEXT NOT NULL, amount FLOAT NOT NULL, category TEXT, date TEXT NOT NULL)")
 latest_transaction = h.get_last_transaction_date(conn)
 df = up.make_dataframe(up.get_transactions(up.UP_API_URL, latest_transaction)) # Getting all transactions into a df
@@ -158,37 +161,58 @@ else:
     periods = reversed(sorted(periods))
     periods = [date.strftime('%B %Y') for date in periods]
 
-cols = st.columns(2)
-with cols[0]:
-    period = st.selectbox(label="**Select Time Period**", options=periods, index=0)
-with cols[1]:
-    sort_by = st.selectbox(label="**Sort By**", options=df.columns[1:], index=3)
+# cols = st.columns(2)
+# with cols[0]:
+period = st.selectbox(label="**Select Time Period**", options=periods, index=0)
+# with cols[1]:
+#     sort_by = st.selectbox(label="**Sort By**", options=df.columns[1:], index=3)
 
-df = df.sort_values(by=f'{sort_by}')
+# df = df.sort_values(by=f'{sort_by}')
 df['date_time'] = pd.to_datetime(df['date'], utc=True)
 df['date'] = df['date_time'].dt.strftime('%d %B %Y')
 df['week'] = df['date_time'].dt.strftime('%Y-W%W')
 df['month'] = df['date_time'].dt.strftime('%B %Y')
 df = df[df['week'] == period] if view == 'Weekly' else df[df['month'] == period]
 df.drop(columns=['date_time', 'week', 'month'], inplace=True)
-print(df)
-with card_container():
-    ui.table(data=df)
+table_height = 750 if view == 'Weekly' else 1000
+edited_df = st.data_editor(
+                df,
+                column_config={
+                    "amount": st.column_config.NumberColumn(
+                        "Amount",
+                        format="$%.2f"
+                    ),
+                    "category": st.column_config.SelectboxColumn(
+                        "Category",
+                        options=[
+                                'Food',
+                                'Entertainment and Recreation',
+                                'Clothing and Accessories',
+                                'Health and Beauty',
+                                'Subscriptions and Memberships',
+                                'Groceries',
+                                'Transportation',
+                                'Shopping',
+                                'Life Admin',
+                                'Other',
+                        ]
+                    )
+                },
+                use_container_width=True,
+                hide_index=True, 
+                height=table_height
+            )
+
+if st.button("Save Changes", type="primary"):
+    try:
+        for id, row in edited_df.iterrows():
+            h.update_entry(row, cursor)
+        conn.commit()
+        st.success("Entries updated successfully", icon='✅')
+    except Exception as e:
+        st.error("Error occured whilst attempting to update transactions")
 
 # **************************************** Modify Expenses **************************************** #
-outer_cols = st.columns(2)
-
-with outer_cols[0]:
-    st.write(f'## Modify Expense')
-    modify_id = st.number_input('Modfiy ID', value=None)
-    if ui.button("Modify Expense", variant="destructive"):
-        delete_query = 'DELETE FROM expenses WHERE id = ?'
-        cursor.execute(delete_query, (id,))
-        if cursor.rowcount == 0:
-            st.error(f'Transaction with ID {int(id)} does not exist in the database', icon='⚠️')
-        else:
-            st.success(f'Transaction with ID {int(id)} deleted from databse', icon='✅')
-        conn.commit()
 
     # st.write(f'## Modify Expense')
     # cols = st.columns(2)
@@ -222,27 +246,33 @@ with outer_cols[0]:
     #         st.success('Expense successfully added', icon='✅')
     #     else:
     #         st.warning("Please fill out all required fields before submitting", icon='⚠️')
-with outer_cols[1]:
-    st.write(f'## Delete Expense')
-    delete_id = st.number_input('Delete ID', value=None)
-    if ui.button("Delete Expense", variant="destructive"):
-        delete_query = 'DELETE FROM expenses WHERE id = ?'
-        cursor.execute(delete_query, (id,))
-        if cursor.rowcount == 0:
-            st.error(f'Transaction with ID {int(id)} does not exist in the database', icon='⚠️')
-        else:
-            st.success(f'Transaction with ID {int(id)} deleted from databse', icon='✅')
-        conn.commit()
+# st.write(f'## Delete Expense')
+
+delete_id = st.number_input('Delete Transaction', value=0)
+if st.button("Delete Expense", type="primary"):
+    delete_query = 'DELETE FROM transactions WHERE id = ?'
+    cursor.execute(delete_query, (delete_id,))
+    if cursor.rowcount == 0:
+        st.error(f'Transaction with ID {int(delete_id)} does not exist in the database', icon='⚠️')
+    else:
+        st.success(f'Transaction with ID {int(delete_id)} deleted from databse', icon='✅')
+    conn.commit()
 
 
 
 # **************************************** Budget Chart **************************************** #
-
+df['category'] = df['category'].fillna('Uncategorised')
 categories = df.groupby('category')['amount'].sum()
 categories = categories.reset_index()
 categories.columns = ['category', 'amount'];
+print(categories)
+total_spend = categories['amount'].sum()
+max_index = categories['amount'].idxmax()
+largest_category = categories.loc[max_index, 'category']
+largest_amount = categories.loc[max_index, 'amount']
 
-st.write(f'## Spending by Category')
+
+st.write(f'## Spending Breakdown for {period}')
 
 with card_container():
     fig = px.pie(categories, values='amount', names='category')
@@ -263,6 +293,12 @@ with card_container():
         ),
     )
     st.plotly_chart(fig, use_container_width=True)
+
+    cols = st.columns(2)
+    with cols[0]:
+        ui.metric_card(title=f'Total Spending', content=f'${round(total_spend, 2)}', description=f'Spent during the period of {period}')
+    with cols[1]:
+        ui.metric_card(title=f'Higest Expense', content=f'${round(largest_amount, 2)}', description=f'Spent on {largest_category}')
 
 
 #budget_multiplier = 1 if view == 'Weekly' else 4
