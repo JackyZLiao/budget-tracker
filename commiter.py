@@ -11,6 +11,7 @@ def make_empty_commit():
     try:
         # Run the Git command to create an empty commit
         subprocess.run(['git', 'commit', '--allow-empty', '-m', 'Regular empty commit'], check=True)
+        subprocess.run(['git', 'push'], check=True)
         print("Empty commit made successfully.")
     except subprocess.CalledProcessError as e:
         print(f"Error making empty commit: {e}")
