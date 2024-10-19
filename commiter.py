@@ -8,6 +8,8 @@ def make_empty_commit():
     script_path = os.path.abspath(__file__)
     print(f"The path to this script is: {script_path}")
 
+    os.chdir("/Users/jackyliao/Desktop/Uni/Personal Projects/budget-tracker")
+
     try:
         # Run the Git command to create an empty commit
         subprocess.run(['git', 'commit', '--allow-empty', '-m', 'Regular empty commit'], check=True)
