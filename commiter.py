@@ -2,12 +2,8 @@ import subprocess
 import os
 
 def make_empty_commit():
-
-
-    # Get the absolute path of the script
-    script_path = os.path.abspath(__file__)
-    print(f"The path to this script is: {script_path}")
-
+    print()
+    print("START")
     os.chdir("/Users/jackyliao/Desktop/Uni/Personal Projects/budget-tracker")
 
     try:
